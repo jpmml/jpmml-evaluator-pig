@@ -49,7 +49,7 @@ public class PMMLFunc<V> extends EvalFunc<V> {
 		File file = new File(path);
 
 		if(!file.exists()){
-			throw new FrontendException();
+			throw new FrontendException("Local PMML file " + file.getAbsolutePath() + " does not exist");
 		}
 
 		setFile(file);
@@ -115,17 +115,19 @@ public class PMMLFunc<V> extends EvalFunc<V> {
 		File file = getFile();
 
 		if(file.exists()){
-			// Ignored
+			super.log.info("Loading local PMML file " + file.getAbsolutePath());
 		} else
 
 		{
-			file = new File("./" + file.getName());
+			file = new File(file.getName());
+
+			super.log.info("Loading distributed cache PMML file " + file.getAbsolutePath());
 		}
 
 		try(InputStream is = new FileInputStream(file)){
 			return EvaluatorUtil.createEvaluator(is);
 		} catch(Exception e){
-			throw new FrontendException(e);
+			throw new FrontendException("Failed to load PMML file", e);
 		}
 	}
 

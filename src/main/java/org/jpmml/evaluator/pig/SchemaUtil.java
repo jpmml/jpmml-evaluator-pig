@@ -79,7 +79,7 @@ public class SchemaUtil {
 
 			int position = schema.getPosition(name.getValue());
 			if(position < 0){
-				throw new FrontendException();
+				throw new FrontendException("Input field " + name.getValue() + " does not have a schema mapping");
 			}
 
 			result.add(new Mapping<>(field, position));

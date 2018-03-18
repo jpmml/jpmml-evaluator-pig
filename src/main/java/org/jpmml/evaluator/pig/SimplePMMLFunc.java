@@ -58,7 +58,7 @@ public class SimplePMMLFunc extends PMMLFunc<Object> {
 
 		List<TargetField> targetFields = evaluator.getTargetFields();
 		if(targetFields.size() != 1){
-			throw new FrontendException();
+			throw new FrontendException("Expected one target field, got " + targetFields.size() + " target fields");
 		}
 
 		return targetFields.get(0);
