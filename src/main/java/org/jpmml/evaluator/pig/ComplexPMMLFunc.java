@@ -35,22 +35,15 @@ import org.jpmml.evaluator.ResultField;
 
 public class ComplexPMMLFunc extends PMMLFunc<Tuple> {
 
-	private TupleFactory tupleFactory = TupleFactory.getInstance();
-
 	private List<Mapping<ResultField>> resultMappings = null;
 
 
-	public ComplexPMMLFunc(String path) throws Exception {
-		this(EvaluatorUtil.createEvaluator(path));
-	}
-
-	public ComplexPMMLFunc(Evaluator evaluator){
-		super(evaluator);
+	public ComplexPMMLFunc(String path) throws FrontendException {
+		super(path);
 	}
 
 	@Override
 	public Tuple encodeOutput(Map<FieldName, ?> result) throws PigException {
-		TupleFactory tupleFactory = getTupleFactory();
 		List<Mapping<ResultField>> resultMappings = ensureResultMappings();
 
 		Object[] pigValues = new Object[resultMappings.size()];
@@ -64,7 +57,7 @@ public class ComplexPMMLFunc extends PMMLFunc<Tuple> {
 			pigValues[position] = org.jpmml.evaluator.EvaluatorUtil.decode(pmmlValue);
 		}
 
-		return tupleFactory.newTupleNoCopy(Arrays.asList(pigValues));
+		return ComplexPMMLFunc.tupleFactory.newTupleNoCopy(Arrays.asList(pigValues));
 	}
 
 	@Override
@@ -78,8 +71,8 @@ public class ComplexPMMLFunc extends PMMLFunc<Tuple> {
 		}
 	}
 
-	public List<? extends ResultField> getResultFields(){
-		Evaluator evaluator = getEvaluator();
+	public List<? extends ResultField> getResultFields() throws FrontendException {
+		Evaluator evaluator = ensureEvaluator();
 
 		List<ResultField> result = new ArrayList<>();
 		result.addAll(evaluator.getTargetFields());
@@ -88,7 +81,7 @@ public class ComplexPMMLFunc extends PMMLFunc<Tuple> {
 		return result;
 	}
 
-	private Schema tupleSchema(){
+	private Schema tupleSchema() throws FrontendException {
 		List<? extends ResultField> resultFields = getResultFields();
 
 		return SchemaUtil.createTupleSchema(resultFields);
@@ -103,7 +96,5 @@ public class ComplexPMMLFunc extends PMMLFunc<Tuple> {
 		return this.resultMappings;
 	}
 
-	private TupleFactory getTupleFactory(){
-		return this.tupleFactory;
-	}
+	private static final TupleFactory tupleFactory = TupleFactory.getInstance();
 }

@@ -18,9 +18,6 @@
  */
 package org.jpmml.evaluator.pig;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 
 import javax.xml.bind.JAXBException;
@@ -38,15 +35,6 @@ import org.xml.sax.SAXException;
 public class EvaluatorUtil {
 
 	private EvaluatorUtil(){
-	}
-
-	static
-	public Evaluator createEvaluator(String path) throws IOException, SAXException, JAXBException {
-		File file = new File(path);
-
-		try(InputStream is = new FileInputStream(file)){
-			return createEvaluator(is);
-		}
 	}
 
 	static

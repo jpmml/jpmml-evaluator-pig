@@ -21,7 +21,6 @@ package org.jpmml.evaluator.pig;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.pig.PigException;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.dmg.pmml.FieldName;
@@ -31,16 +30,12 @@ import org.jpmml.evaluator.TargetField;
 
 public class SimplePMMLFunc extends PMMLFunc<Object> {
 
-	public SimplePMMLFunc(String path) throws Exception {
-		this(EvaluatorUtil.createEvaluator(path));
-	}
-
-	public SimplePMMLFunc(Evaluator evaluator){
-		super(evaluator);
+	public SimplePMMLFunc(String path) throws FrontendException {
+		super(path);
 	}
 
 	@Override
-	public Object encodeOutput(Map<FieldName, ?> result) throws PigException {
+	public Object encodeOutput(Map<FieldName, ?> result) throws FrontendException {
 		ResultField resultField = getResultField();
 
 		Object pmmlValue = result.get(resultField.getName());
@@ -59,7 +54,7 @@ public class SimplePMMLFunc extends PMMLFunc<Object> {
 	}
 
 	public ResultField getResultField() throws FrontendException {
-		Evaluator evaluator = getEvaluator();
+		Evaluator evaluator = ensureEvaluator();
 
 		List<TargetField> targetFields = evaluator.getTargetFields();
 		if(targetFields.size() != 1){

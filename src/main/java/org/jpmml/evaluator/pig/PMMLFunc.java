@@ -18,6 +18,10 @@
  */
 package org.jpmml.evaluator.pig;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,13 +38,21 @@ import org.jpmml.evaluator.InputField;
 abstract
 public class PMMLFunc<V> extends EvalFunc<V> {
 
+	private File file = null;
+
 	private Evaluator evaluator = null;
 
 	private List<Mapping<InputField>> argumentMappings = null;
 
 
-	public PMMLFunc(Evaluator evaluator){
-		setEvaluator(evaluator);
+	public PMMLFunc(String path) throws FrontendException {
+		File file = new File(path);
+
+		if(!file.exists()){
+			throw new FrontendException();
+		}
+
+		setFile(file);
 	}
 
 	abstract
@@ -48,7 +60,7 @@ public class PMMLFunc<V> extends EvalFunc<V> {
 
 	@Override
 	public V exec(Tuple tuple) throws PigException {
-		Evaluator evaluator = getEvaluator();
+		Evaluator evaluator = ensureEvaluator();
 
 		Map<FieldName, FieldValue> arguments = decodeInput(tuple);
 
@@ -77,10 +89,44 @@ public class PMMLFunc<V> extends EvalFunc<V> {
 		return result;
 	}
 
-	public List<InputField> getInputFields(){
-		Evaluator evaluator = getEvaluator();
+	@Override
+	public List<String> getShipFiles(){
+		File file = getFile();
+
+		return Collections.singletonList(file.getAbsolutePath());
+	}
+
+	public List<InputField> getInputFields() throws FrontendException {
+		Evaluator evaluator = ensureEvaluator();
 
 		return evaluator.getInputFields();
+	}
+
+	public Evaluator ensureEvaluator() throws FrontendException {
+
+		if(this.evaluator == null){
+			this.evaluator = createEvaluator();
+		}
+
+		return this.evaluator;
+	}
+
+	private Evaluator createEvaluator() throws FrontendException {
+		File file = getFile();
+
+		if(file.exists()){
+			// Ignored
+		} else
+
+		{
+			file = new File("./" + file.getName());
+		}
+
+		try(InputStream is = new FileInputStream(file)){
+			return EvaluatorUtil.createEvaluator(is);
+		} catch(Exception e){
+			throw new FrontendException(e);
+		}
 	}
 
 	private List<Mapping<InputField>> ensureArgumentMappings() throws FrontendException {
@@ -92,11 +138,11 @@ public class PMMLFunc<V> extends EvalFunc<V> {
 		return this.argumentMappings;
 	}
 
-	public Evaluator getEvaluator(){
-		return this.evaluator;
+	public File getFile(){
+		return this.file;
 	}
 
-	private void setEvaluator(Evaluator evaluator){
-		this.evaluator = evaluator;
+	private void setFile(File file){
+		this.file = file;
 	}
 }
