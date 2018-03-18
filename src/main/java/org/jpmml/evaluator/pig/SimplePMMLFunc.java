@@ -18,6 +18,7 @@
  */
 package org.jpmml.evaluator.pig;
 
+import java.io.File;
 import java.util.List;
 import java.util.Map;
 
@@ -30,8 +31,8 @@ import org.jpmml.evaluator.TargetField;
 
 public class SimplePMMLFunc extends PMMLFunc<Object> {
 
-	public SimplePMMLFunc(String path) throws FrontendException {
-		super(path);
+	public SimplePMMLFunc(String path){
+		super(new FileResource(new File(path)));
 	}
 
 	@Override

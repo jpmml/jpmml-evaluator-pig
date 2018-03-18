@@ -18,10 +18,7 @@
  */
 package org.jpmml.evaluator.pig;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.InputStream;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,21 +35,15 @@ import org.jpmml.evaluator.InputField;
 abstract
 public class PMMLFunc<V> extends EvalFunc<V> {
 
-	private File file = null;
+	private Resource resource = null;
 
 	private Evaluator evaluator = null;
 
 	private List<Mapping<InputField>> argumentMappings = null;
 
 
-	public PMMLFunc(String path) throws FrontendException {
-		File file = new File(path);
-
-		if(!file.exists()){
-			throw new FrontendException("Local PMML file " + file.getAbsolutePath() + " does not exist");
-		}
-
-		setFile(file);
+	public PMMLFunc(Resource resource){
+		setResource(resource);
 	}
 
 	abstract
@@ -91,9 +82,9 @@ public class PMMLFunc<V> extends EvalFunc<V> {
 
 	@Override
 	public List<String> getShipFiles(){
-		File file = getFile();
+		Resource resource = getResource();
 
-		return Collections.singletonList(file.getAbsolutePath());
+		return resource.getShipFiles();
 	}
 
 	public List<InputField> getInputFields() throws FrontendException {
@@ -112,22 +103,12 @@ public class PMMLFunc<V> extends EvalFunc<V> {
 	}
 
 	private Evaluator createEvaluator() throws FrontendException {
-		File file = getFile();
+		Resource resource = getResource();
 
-		if(file.exists()){
-			super.log.info("Loading local PMML file " + file.getAbsolutePath());
-		} else
-
-		{
-			file = new File(file.getName());
-
-			super.log.info("Loading distributed cache PMML file " + file.getAbsolutePath());
-		}
-
-		try(InputStream is = new FileInputStream(file)){
+		try(InputStream is = resource.getInputStream()){
 			return EvaluatorUtil.createEvaluator(is);
 		} catch(Exception e){
-			throw new FrontendException("Failed to load PMML file", e);
+			throw new FrontendException("Failed to create Evaluator instance", e);
 		}
 	}
 
@@ -140,11 +121,11 @@ public class PMMLFunc<V> extends EvalFunc<V> {
 		return this.argumentMappings;
 	}
 
-	public File getFile(){
-		return this.file;
+	public Resource getResource(){
+		return this.resource;
 	}
 
-	private void setFile(File file){
-		this.file = file;
+	private void setResource(Resource resource){
+		this.resource = resource;
 	}
 }

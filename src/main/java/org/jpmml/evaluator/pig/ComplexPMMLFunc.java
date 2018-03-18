@@ -18,6 +18,7 @@
  */
 package org.jpmml.evaluator.pig;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -38,8 +39,8 @@ public class ComplexPMMLFunc extends PMMLFunc<Tuple> {
 	private List<Mapping<ResultField>> resultMappings = null;
 
 
-	public ComplexPMMLFunc(String path) throws FrontendException {
-		super(path);
+	public ComplexPMMLFunc(String path){
+		super(new FileResource(new File(path)));
 	}
 
 	@Override
