@@ -21,7 +21,7 @@ package org.jpmml.evaluator.pig;
 import org.apache.pig.pigunit.PigTest;
 import org.junit.Test;
 
-public class ComplexPMMLFuncTest {
+public class ComplexPMMLFuncTest extends PMMLFuncTest {
 
 	@Test
 	public void evaluate() throws Exception {
@@ -30,7 +30,9 @@ public class ComplexPMMLFuncTest {
 		String[] iris_classification = {
 			"((setosa,2))",
 			"((versicolor,6))",
-			"((virginica,7))"
+			PMMLFuncTest.NULL,
+			"((virginica,7))",
+			PMMLFuncTest.NULL
 		};
 
 		pigTest.assertOutput("iris_classification", iris_classification);

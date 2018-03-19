@@ -25,12 +25,16 @@ import java.util.Map;
 
 import org.apache.pig.EvalFunc;
 import org.apache.pig.PigException;
+import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.dmg.pmml.FieldName;
+import org.jpmml.evaluator.EvaluationException;
 import org.jpmml.evaluator.Evaluator;
 import org.jpmml.evaluator.FieldValue;
 import org.jpmml.evaluator.InputField;
+import org.jpmml.evaluator.InvalidFeatureException;
+import org.jpmml.evaluator.UnsupportedFeatureException;
 
 abstract
 public class PMMLFunc<V> extends EvalFunc<V> {
@@ -53,11 +57,41 @@ public class PMMLFunc<V> extends EvalFunc<V> {
 	public V exec(Tuple tuple) throws PigException {
 		Evaluator evaluator = ensureEvaluator();
 
-		Map<FieldName, FieldValue> arguments = decodeInput(tuple);
+		if(tuple == null || tuple.size() == 0){
+			return null;
+		}
 
-		Map<FieldName, ?> result = evaluator.evaluate(arguments);
+		String message = null;
 
-		return encodeOutput(result);
+		try {
+			message = "Failed to decode arguments";
+
+			Map<FieldName, FieldValue> arguments;
+
+			try {
+				arguments = decodeInput(tuple);
+			} catch(IllegalArgumentException iae){
+				super.log.warn(message, iae);
+
+				return null;
+			}
+
+			message = "Failed to evaluate";
+
+			Map<FieldName, ?> result = evaluator.evaluate(arguments);
+
+			message = "Failed to encode results";
+
+			return encodeOutput(result);
+		} catch(EvaluationException ee){
+			super.log.warn(message, ee);
+
+			return null;
+		} catch(InvalidFeatureException | UnsupportedFeatureException fe){
+			super.log.error(message, fe);
+
+			throw new ExecException(fe);
+		}
 	}
 
 	public Map<FieldName, FieldValue> decodeInput(Tuple tuple) throws PigException {
@@ -108,7 +142,7 @@ public class PMMLFunc<V> extends EvalFunc<V> {
 		try(InputStream is = resource.getInputStream()){
 			return EvaluatorUtil.createEvaluator(is);
 		} catch(Exception e){
-			throw new FrontendException("Failed to create Evaluator instance", e);
+			throw new FrontendException("Failed to create model evaluator", e);
 		}
 	}
 
