@@ -18,8 +18,25 @@
  */
 package org.jpmml.evaluator.pig;
 
-abstract
+import org.apache.pig.pigunit.PigTest;
+import org.junit.Test;
+
 public class PMMLFuncTest {
+
+	@Test
+	public void evaluate() throws Exception {
+		PigTest pigTest = new PigTest("src/test/pig/PMMLFunc.pig");
+
+		String[] iris_classification = {
+			"((setosa,2))",
+			"((versicolor,6))",
+			PMMLFuncTest.NULL,
+			"((virginica,7))",
+			PMMLFuncTest.NULL
+		};
+
+		pigTest.assertOutput("iris_classification", iris_classification);
+	}
 
 	public static final String NULL = "()";
 }

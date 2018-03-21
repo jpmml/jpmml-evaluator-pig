@@ -18,7 +18,8 @@
  */
 package org.jpmml.evaluator.pig;
 
-import java.io.InputStream;
+import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,35 +27,42 @@ import java.util.Map;
 import org.apache.pig.EvalFunc;
 import org.apache.pig.PigException;
 import org.apache.pig.backend.executionengine.ExecException;
+import org.apache.pig.data.DataType;
 import org.apache.pig.data.Tuple;
+import org.apache.pig.data.TupleFactory;
 import org.apache.pig.impl.logicalLayer.FrontendException;
+import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.dmg.pmml.FieldName;
 import org.jpmml.evaluator.EvaluationException;
 import org.jpmml.evaluator.Evaluator;
 import org.jpmml.evaluator.FieldValue;
 import org.jpmml.evaluator.InputField;
 import org.jpmml.evaluator.InvalidFeatureException;
+import org.jpmml.evaluator.ResultField;
+import org.jpmml.evaluator.TargetField;
 import org.jpmml.evaluator.UnsupportedFeatureException;
 
-abstract
-public class PMMLFunc<V> extends EvalFunc<V> {
+public class PMMLFunc extends EvalFunc<Tuple> {
 
 	private Resource resource = null;
 
 	private Evaluator evaluator = null;
 
-	private List<Mapping<InputField>> argumentMappings = null;
+	private List<Mapping<InputField>> inputMappings = null;
 
+	private List<Mapping<ResultField>> outputMappings = null;
+
+
+	public PMMLFunc(String path){
+		this(new FileResource(new File(path)));
+	}
 
 	public PMMLFunc(Resource resource){
 		setResource(resource);
 	}
 
-	abstract
-	public V encodeOutput(Map<FieldName, ?> result) throws PigException;
-
 	@Override
-	public V exec(Tuple tuple) throws PigException {
+	public Tuple exec(Tuple tuple) throws PigException {
 		Evaluator evaluator = ensureEvaluator();
 
 		if(tuple == null || tuple.size() == 0){
@@ -94,14 +102,34 @@ public class PMMLFunc<V> extends EvalFunc<V> {
 		}
 	}
 
-	public Map<FieldName, FieldValue> decodeInput(Tuple tuple) throws PigException {
-		List<Mapping<InputField>> argumentMappings = ensureArgumentMappings();
+	@Override
+	public List<String> getShipFiles(){
+		Resource resource = getResource();
+
+		return resource.getShipFiles();
+	}
+
+	@Override
+	public Schema outputSchema(Schema schema){
+		String name = (this.getClass()).getName();
+
+		try {
+			List<ResultField> resultFields = getResultFields();
+
+			return new Schema(new Schema.FieldSchema(getSchemaName(name.toLowerCase(), schema), SchemaUtil.createTupleSchema(resultFields), DataType.TUPLE));
+		} catch(FrontendException fe){
+			return super.outputSchema(schema);
+		}
+	}
+
+	private Map<FieldName, FieldValue> decodeInput(Tuple tuple) throws PigException {
+		List<Mapping<InputField>> inputMappings = ensureInputMappings();
 
 		Map<FieldName, FieldValue> result = new HashMap<>();
 
-		for(Mapping<InputField> argumentMapping : argumentMappings){
-			InputField inputField = argumentMapping.getField();
-			int position = argumentMapping.getPosition();
+		for(Mapping<InputField> inputMapping : inputMappings){
+			InputField inputField = inputMapping.getField();
+			int position = inputMapping.getPosition();
 
 			Object pigValue = tuple.get(position);
 
@@ -114,20 +142,44 @@ public class PMMLFunc<V> extends EvalFunc<V> {
 		return result;
 	}
 
-	@Override
-	public List<String> getShipFiles(){
-		Resource resource = getResource();
+	private Tuple encodeOutput(Map<FieldName, ?> result) throws PigException {
+		List<Mapping<ResultField>> outputMappings = ensureOutputMappings();
 
-		return resource.getShipFiles();
+		Tuple tuple = PMMLFunc.tupleFactory.newTuple(outputMappings.size());
+
+		for(Mapping<ResultField> outputMapping : outputMappings){
+			ResultField resultField = outputMapping.getField();
+			int position = outputMapping.getPosition();
+
+			Object pmmlValue = result.get(resultField.getName());
+
+			if(resultField instanceof TargetField){
+				pmmlValue = org.jpmml.evaluator.EvaluatorUtil.decode(pmmlValue);
+			}
+
+			tuple.set(position, pmmlValue);
+		}
+
+		return tuple;
 	}
 
-	public List<InputField> getInputFields() throws FrontendException {
+	private List<InputField> getInputFields() throws FrontendException {
 		Evaluator evaluator = ensureEvaluator();
 
 		return evaluator.getInputFields();
 	}
 
-	public Evaluator ensureEvaluator() throws FrontendException {
+	private List<ResultField> getResultFields() throws FrontendException {
+		Evaluator evaluator = ensureEvaluator();
+
+		List<ResultField> result = new ArrayList<>();
+		result.addAll(evaluator.getTargetFields());
+		result.addAll(evaluator.getOutputFields());
+
+		return result;
+	}
+
+	private Evaluator ensureEvaluator() throws FrontendException {
 
 		if(this.evaluator == null){
 			this.evaluator = createEvaluator();
@@ -139,20 +191,33 @@ public class PMMLFunc<V> extends EvalFunc<V> {
 	private Evaluator createEvaluator() throws FrontendException {
 		Resource resource = getResource();
 
-		try(InputStream is = resource.getInputStream()){
-			return EvaluatorUtil.createEvaluator(is);
+		try {
+			return EvaluatorUtil.createEvaluator(resource);
 		} catch(Exception e){
 			throw new FrontendException("Failed to create model evaluator", e);
 		}
 	}
 
-	private List<Mapping<InputField>> ensureArgumentMappings() throws FrontendException {
+	private List<Mapping<InputField>> ensureInputMappings() throws FrontendException {
 
-		if(this.argumentMappings == null){
-			this.argumentMappings = SchemaUtil.mapAll(getInputFields(), getInputSchema());
+		if(this.inputMappings == null){
+			List<InputField> inputFields = getInputFields();
+
+			this.inputMappings = SchemaUtil.mapAll(inputFields, getInputSchema());
 		}
 
-		return this.argumentMappings;
+		return this.inputMappings;
+	}
+
+	private List<Mapping<ResultField>> ensureOutputMappings() throws FrontendException {
+
+		if(this.outputMappings == null){
+			List<ResultField> resultFields = getResultFields();
+
+			this.outputMappings = SchemaUtil.mapAll(resultFields, SchemaUtil.createTupleSchema(resultFields));
+		}
+
+		return this.outputMappings;
 	}
 
 	public Resource getResource(){
@@ -162,4 +227,6 @@ public class PMMLFunc<V> extends EvalFunc<V> {
 	private void setResource(Resource resource){
 		this.resource = resource;
 	}
+
+	private static final TupleFactory tupleFactory = TupleFactory.getInstance();
 }

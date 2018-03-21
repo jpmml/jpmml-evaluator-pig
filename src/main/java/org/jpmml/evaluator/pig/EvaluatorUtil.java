@@ -18,6 +18,7 @@
  */
 package org.jpmml.evaluator.pig;
 
+import java.io.IOException;
 import java.io.InputStream;
 
 import javax.xml.bind.JAXBException;
@@ -35,6 +36,14 @@ import org.xml.sax.SAXException;
 public class EvaluatorUtil {
 
 	private EvaluatorUtil(){
+	}
+
+	static
+	public Evaluator createEvaluator(Resource resource) throws IOException, SAXException, JAXBException {
+
+		try(InputStream is = resource.getInputStream()){
+			return createEvaluator(is);
+		}
 	}
 
 	static
