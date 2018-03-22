@@ -35,7 +35,7 @@ public class PMMLFuncTest {
 			PMMLFuncTest.NULL
 		};
 
-		pigTest.assertOutput("iris_classification", iris_classification);
+		pigTest.assertOutput("Iris_classification", iris_classification);
 	}
 
 	public static final String NULL = "()";
