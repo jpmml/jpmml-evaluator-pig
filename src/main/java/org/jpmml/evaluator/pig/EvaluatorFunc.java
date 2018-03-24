@@ -19,10 +19,14 @@
 package org.jpmml.evaluator.pig;
 
 import java.io.File;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import javax.xml.bind.JAXBException;
+import javax.xml.transform.Source;
 
 import org.apache.pig.EvalFunc;
 import org.apache.pig.PigException;
@@ -33,14 +37,22 @@ import org.apache.pig.data.TupleFactory;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.dmg.pmml.FieldName;
+import org.dmg.pmml.PMML;
 import org.jpmml.evaluator.EvaluationException;
 import org.jpmml.evaluator.Evaluator;
+import org.jpmml.evaluator.EvaluatorUtil;
 import org.jpmml.evaluator.FieldValue;
 import org.jpmml.evaluator.InputField;
 import org.jpmml.evaluator.InvalidFeatureException;
+import org.jpmml.evaluator.ModelEvaluatorFactory;
 import org.jpmml.evaluator.ResultField;
 import org.jpmml.evaluator.TargetField;
 import org.jpmml.evaluator.UnsupportedFeatureException;
+import org.jpmml.model.ImportFilter;
+import org.jpmml.model.JAXBUtil;
+import org.jpmml.model.visitors.LocatorTransformer;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
 
 public class EvaluatorFunc extends EvalFunc<Tuple> {
 
@@ -154,7 +166,7 @@ public class EvaluatorFunc extends EvalFunc<Tuple> {
 			Object pmmlValue = result.get(resultField.getName());
 
 			if(resultField instanceof TargetField){
-				pmmlValue = org.jpmml.evaluator.EvaluatorUtil.decode(pmmlValue);
+				pmmlValue = EvaluatorUtil.decode(pmmlValue);
 			}
 
 			tuple.set(position, pmmlValue);
@@ -191,8 +203,8 @@ public class EvaluatorFunc extends EvalFunc<Tuple> {
 	private Evaluator createEvaluator() throws FrontendException {
 		Resource resource = getResource();
 
-		try {
-			return EvaluatorUtil.createEvaluator(resource);
+		try(InputStream is = resource.getInputStream()){
+			return createEvaluator(is);
 		} catch(Exception e){
 			throw new FrontendException("Failed to create model evaluator", e);
 		}
@@ -226,6 +238,26 @@ public class EvaluatorFunc extends EvalFunc<Tuple> {
 
 	private void setResource(Resource resource){
 		this.resource = resource;
+	}
+
+	static
+	private Evaluator createEvaluator(InputStream is) throws SAXException, JAXBException {
+		Source source = ImportFilter.apply(new InputSource(is));
+
+		PMML pmml = JAXBUtil.unmarshalPMML(source);
+
+		// If the SAX Locator information is available, then transform it to java.io.Serializable representation
+		LocatorTransformer locatorTransformer = new LocatorTransformer();
+		locatorTransformer.applyTo(pmml);
+
+		ModelEvaluatorFactory modelEvaluatorFactory = ModelEvaluatorFactory.newInstance();
+
+		Evaluator evaluator = modelEvaluatorFactory.newModelEvaluator(pmml);
+
+		// Perform self-testing
+		evaluator.verify();
+
+		return evaluator;
 	}
 
 	private static final TupleFactory tupleFactory = TupleFactory.getInstance();
