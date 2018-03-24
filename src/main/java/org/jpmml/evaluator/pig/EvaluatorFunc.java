@@ -42,7 +42,7 @@ import org.jpmml.evaluator.ResultField;
 import org.jpmml.evaluator.TargetField;
 import org.jpmml.evaluator.UnsupportedFeatureException;
 
-public class PMMLFunc extends EvalFunc<Tuple> {
+public class EvaluatorFunc extends EvalFunc<Tuple> {
 
 	private Resource resource = null;
 
@@ -53,11 +53,11 @@ public class PMMLFunc extends EvalFunc<Tuple> {
 	private List<Mapping<ResultField>> outputMappings = null;
 
 
-	public PMMLFunc(String path){
+	public EvaluatorFunc(String path){
 		this(new FileResource(new File(path)));
 	}
 
-	public PMMLFunc(Resource resource){
+	public EvaluatorFunc(Resource resource){
 		setResource(resource);
 	}
 
@@ -145,7 +145,7 @@ public class PMMLFunc extends EvalFunc<Tuple> {
 	private Tuple encodeOutput(Map<FieldName, ?> result) throws PigException {
 		List<Mapping<ResultField>> outputMappings = ensureOutputMappings();
 
-		Tuple tuple = PMMLFunc.tupleFactory.newTuple(outputMappings.size());
+		Tuple tuple = EvaluatorFunc.tupleFactory.newTuple(outputMappings.size());
 
 		for(Mapping<ResultField> outputMapping : outputMappings){
 			ResultField resultField = outputMapping.getField();

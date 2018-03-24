@@ -31,9 +31,9 @@ Add the runtime uber-JAR file to Apache Pig classpath:
 REGISTER jpmml-evaluator-pig-runtime-1.0-SNAPSHOT.jar;
 ```
 
-Define a function by instantiating the `org.jpmml.evaluator.pig.PMMLFunc` user defined function (UDF) class. The public constructor takes exactly one string argument, which is the path to the PMML document in local filesystem:
+Define a function by instantiating the `org.jpmml.evaluator.pig.EvaluatorFunc` user defined function (UDF) class. The public constructor takes exactly one string argument, which is the path to the PMML document in local filesystem:
 ```
-DEFINE DecisionTreeIris org.jpmml.evaluator.pig.PMMLFunc('DecisionTreeIris.pmml');
+DEFINE DecisionTreeIris org.jpmml.evaluator.pig.EvaluatorFunc('DecisionTreeIris.pmml');
 ```
 
 Load and score the Iris dataset:
