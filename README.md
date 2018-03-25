@@ -26,21 +26,25 @@ The build produces two JAR files:
 
 # Usage #
 
-### Configuration ###
+### Configuring the runtime ###
 
 Add the runtime uber-JAR file to Apache Pig classpath:
 ```
 REGISTER jpmml-evaluator-pig-runtime-1.0-SNAPSHOT.jar;
 ```
 
-### Defining PMML functions ###
+The PMML model evaluation functionality is implemented by the `org.jpmml.evaluator.pig.EvaluatorFunc` UDF class. This is a concrete class, which can be instantiated and parameterized with model evaluator information in Apache Pig queries. Alternatively, it may be subclassed and pre-parameterized with model evaluator information with the aim of reducing technical and organizational complexity for end users.
 
-Define the PMML function by instantiating the `org.jpmml.evaluator.pig.EvaluatorFunc` PMML UDF class. The public constructor of this class takes exactly one string argument, which is the path to the PMML document in local filesystem:
+### Defining "standard" PMML functions ###
+
+The `EvaluatorFunc` UDF class has a public constructor, which takes the path to the PMML file in local filesystem as its sole string-valued argument:
 ```
-DEFINE DecisionTreeIris org.jpmml.evaluator.pig.EvaluatorFunc('DecisionTreeIris.pmml');
+DEFINE DecisionTreeIris org.jpmml.evaluator.pig.EvaluatorFunc('/path/to/DecisionTreeIris.pmml');
 ```
 
-Alternatively, create a subclass of the PMML UDF class:
+### Building PMML functions manually ###
+
+Create a subclass of the `EvaluatorFunc` UDF class:
 ```Java
 package com.mycompany;
 
@@ -54,8 +58,7 @@ public class DecisionTreeIris extends EvaluatorFunc {
 	}
 }
 ```
-
-Package this subclass together with the accompanying PMML document (and other metadata such as the Service Loader configuration file) into a so-called model JAR file:
+Package this class together with the accompanying PMML resource (and other supporting information such as the Service Loader configuration file) into a model JAR file:
 ```
 $ unzip -l DecisionTreeIris.jar
 Archive:  DecisionTreeIris.jar
@@ -71,7 +74,11 @@ Archive:  DecisionTreeIris.jar
      5636                     6 files
 ```
 
-The subclassing and packaging process can be automated using the `org.jpmml.evaluator.pig.ArchiveBuilderFunc` UDF class. This UDF takes a tuple of three string values (the fully qualified name of the subclass, tha paths to the PMML document and the model JAR file in local filesystem) as input, and returns a string value (the path to the model JAR file in local filesystem) as output:
+### Building PMML functions using the Archive Builder function ###
+
+The model JAR building functionality is implemented by the `org.jpmml.evaluator.pig.ArchiveBuilderFunc` UDF class.
+
+The Archive Builder function takes a tuple of three string values (the fully qualified name of the PMML UDF class, tha paths to the PMML file and the model JAR file in local filesystem) as input, and produces a string value (the absolute path to the model JAR file in local filesystem) as output:
 ```
 Udf = LOAD 'Udf.csv' USING PigStorage(',') AS (Class_Name:chararray, PMML_File:chararray, Model_Jar_File:chararray);
 
@@ -80,16 +87,21 @@ Udf_model_jar_file = FOREACH Udf GENERATE org.jpmml.evaluator.pig.ArchiveBuilder
 DUMP Udf_model_jar_file;
 ```
 
-Add the model JAR file to Apache Pig classpath, and define the PMML function by instantiating the `com.mycompany.DecisionTreeIris` UDF class:
-```
-ADD DecisionTreeIris.jar;
+### Defining "custom" PMML functions ###
 
+Add the model JAR file to Apache Pig classpath:
+```
+REGISTER /path/to/DecisionTreeIris.jar;
+```
+
+The PMML UDF class is expected to have a public default (ie. no-arguments) constructor:
+```
 DEFINE DecisionTreeIris com.mycompany.DecisionTreeIris;
 ```
 
-### Applying PMML functions to data ###
+### Applying PMML functions ###
 
-All PMML UDF classes take a tuple as input, and return a tuple as output.
+All PMML functions take a tuple as input, and produce another tuple as output.
 
 Load and score the Iris dataset:
 ```
